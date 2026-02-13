@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Arbitrum QR Code Generator</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="dashboard">
+      <div class="dashboard-header">
+        <div class="dashboard-brand">
+          <img src="/assets/logo-white.svg" alt="Arbitrum" />
+          <div class="separator"></div>
+          <h1>QR Code Generator</h1>
+        </div>
+        <button class="btn-ghost btn-sm" id="logout-btn">Sign out</button>
+      </div>
+
+      <!-- Manual UTM Builder -->
+      <section class="card" id="utm-builder">
+        <h2>Generate QR Code</h2>
+        <p class="section-desc">
+          Build a UTM-tagged URL and generate a QR code for it.
+        </p>
+
+        <form id="utm-form" autocomplete="off">
+          <div class="form-row">
+            <div class="field full">
+              <label for="linkName">Link Name</label>
+              <input
+                type="text"
+                id="linkName"
+                placeholder="e.g. ETHDenver Main Stage CTA"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field full">
+              <label for="baseUrl">Base URL <span class="req">*</span></label>
+              <input
+                type="url"
+                id="baseUrl"
+                placeholder="https://arbitrum.io/grants"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-row three-col">
+            <div class="field">
+              <label for="source">Source <span class="req">*</span></label>
+              <select id="source" required>
+                <option value="">Select&hellip;</option>
+                <option>event</option>
+                <option>website</option>
+                <option>blog</option>
+                <option>builder-block</option>
+                <option>devto</option>
+                <option>github</option>
+                <option>youtube</option>
+                <option>farcaster</option>
+                <option>linkedin</option>
+                <option>twitter</option>
+                <option>telegram</option>
+                <option>email</option>
+                <option>ethd-luma</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="medium">Medium <span class="req">*</span></label>
+              <select id="medium" required>
+                <option value="">Select&hellip;</option>
+                <option>event</option>
+                <option>referral</option>
+                <option>docs</option>
+                <option>blog</option>
+                <option>website</option>
+                <option>email</option>
+                <option>newsletter</option>
+                <option>social</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="campaign">Campaign</label>
+              <input
+                type="text"
+                id="campaign"
+                placeholder="e.g. ethdenver-2026"
+              />
+            </div>
+          </div>
+
+          <div class="form-row two-col">
+            <div class="field">
+              <label for="content">Content</label>
+              <input type="text" id="content" placeholder="e.g. header-cta" />
+            </div>
+            <div class="field">
+              <label for="eventName">Event Name</label>
+              <input
+                type="text"
+                id="eventName"
+                placeholder="e.g. ETHDenver 2026"
+              />
+            </div>
+          </div>
+
+          <div class="url-preview" id="url-preview">
+            <label>Final URL</label>
+            <div class="url-preview-box" id="url-preview-text">
+              Fill in the fields above&hellip;
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary" id="generate-btn">
+              Generate QR Code
+            </button>
+          </div>
+
+          <div class="error-msg" id="form-error"></div>
+        </form>
+
+        <!-- QR Result -->
+        <div class="qr-result" id="qr-result" style="display: none">
+          <div class="qr-result-inner">
+            <img id="qr-img" src="" alt="QR Code" />
+            <div class="qr-result-info">
+              <p class="qr-result-label">QR Code generated</p>
+              <a id="qr-link" href="" target="_blank" class="qr-result-url"
+                >Open image</a
+              >
+              <button class="btn-sm btn-ghost" id="copy-btn">Copy URL</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Notion entries (shown when available) -->
+      <section class="card" id="notion-section" style="display: none">
+        <h2>Notion UTM Entries</h2>
+        <p class="section-desc">
+          Entries synced from your Notion UTM Builder database.
+        </p>
+        <div class="table-wrap">
+          <div class="loading" id="loading">
+            <span class="spinner"></span> Loading&hellip;
+          </div>
+          <div class="empty-state" id="empty" style="display: none">
+            No UTM entries found.
+          </div>
+          <table id="table" style="display: none">
+            <thead>
+              <tr>
+                <th>Link Name</th>
+                <th>Source</th>
+                <th>Medium</th>
+                <th>Final URL</th>
+                <th>QR Code</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      // UTM URL Builder
+      const fields = [
+        "baseUrl",
+        "source",
+        "medium",
+        "campaign",
+        "content",
+        "eventName",
+      ];
+      const previewText = document.getElementById("url-preview-text");
+
+      function slugify(str) {
+        return str
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+      }
+
+      function buildFinalUrl() {
+        const base = document.getElementById("baseUrl").value.trim();
+        if (!base) return "";
+
+        const params = new URLSearchParams();
+        const source = document.getElementById("source").value;
+        const medium = document.getElementById("medium").value;
+        const campaign = document.getElementById("campaign").value.trim();
+        const content = document.getElementById("content").value.trim();
+        const eventName = document.getElementById("eventName").value.trim();
+
+        if (source) params.set("utm_source", slugify(source));
+        if (medium) params.set("utm_medium", slugify(medium));
+        if (campaign) params.set("utm_campaign", slugify(campaign));
+        if (content) params.set("utm_content", slugify(content));
+        if (eventName) params.set("utm_term", slugify(eventName));
+
+        const qs = params.toString();
+        if (!qs) return base;
+
+        const separator = base.includes("?") ? "&" : "?";
+        return base + separator + qs;
+      }
+
+      function updatePreview() {
+        const url = buildFinalUrl();
+        if (url) {
+          previewText.textContent = url;
+          previewText.classList.add("has-url");
+        } else {
+          previewText.textContent = "Fill in the fields above\u2026";
+          previewText.classList.remove("has-url");
+        }
+      }
+
+      fields.forEach((id) => {
+        document.getElementById(id).addEventListener("input", updatePreview);
+        document.getElementById(id).addEventListener("change", updatePreview);
+      });
+
+      // Generate QR
+      const form = document.getElementById("utm-form");
+      const generateBtn = document.getElementById("generate-btn");
+      const formError = document.getElementById("form-error");
+      const qrResult = document.getElementById("qr-result");
+      const qrImg = document.getElementById("qr-img");
+      const qrLink = document.getElementById("qr-link");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        formError.classList.remove("visible");
+
+        const url = buildFinalUrl();
+        if (!url) return;
+
+        generateBtn.disabled = true;
+        generateBtn.textContent = "Generating\u2026";
+
+        try {
+          const res = await fetch("/api/generate-qr-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              url,
+              title:
+                document.getElementById("linkName").value.trim() || undefined,
+            }),
+          });
+
+          if (res.status === 401) {
+            window.location.href = "/";
+            return;
+          }
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          qrImg.src = data.qrUrl;
+          qrLink.href = data.qrUrl;
+          qrLink.textContent = data.qrUrl;
+          qrResult.style.display = "block";
+          qrResult.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        } catch (err) {
+          formError.textContent = err.message;
+          formError.classList.add("visible");
+        } finally {
+          generateBtn.disabled = false;
+          generateBtn.textContent = "Generate QR Code";
+        }
+      });
+
+      document.getElementById("copy-btn").addEventListener("click", () => {
+        const url = qrLink.href;
+        navigator.clipboard.writeText(url).then(() => {
+          const btn = document.getElementById("copy-btn");
+          btn.textContent = "Copied!";
+          setTimeout(() => (btn.textContent = "Copy URL"), 1500);
+        });
+      });
+
+      // Notion entries (try to load, show section only if available)
+      async function loadEntries() {
+        const section = document.getElementById("notion-section");
+        const loading = document.getElementById("loading");
+        const empty = document.getElementById("empty");
+        const table = document.getElementById("table");
+        const tbody = document.getElementById("tbody");
+
+        try {
+          const res = await fetch("/api/utm-entries");
+          if (res.status === 401) {
+            window.location.href = "/";
+            return;
+          }
+
+          const data = await res.json();
+          if (!res.ok) {
+            console.warn("utm-entries error:", data.error);
+            return;
+          }
+
+          const entries = Array.isArray(data) ? data : [];
+
+          section.style.display = "block";
+          loading.style.display = "none";
+
+          if (!entries.length) {
+            empty.style.display = "block";
+            return;
+          }
+
+          table.style.display = "table";
+          for (const entry of entries) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${esc(entry.linkName)}</td>
+              <td><span class="badge">${esc(entry.source)}</span></td>
+              <td><span class="badge">${esc(entry.medium)}</span></td>
+              <td class="url-cell" title="${esc(entry.finalUrl)}">${esc(entry.finalUrl) || "&mdash;"}</td>
+              <td>${
+                entry.qrCodeUrl
+                  ? `<a href="${esc(entry.qrCodeUrl)}" target="_blank" class="status-done">View QR</a>`
+                  : "&mdash;"
+              }</td>
+              <td>${
+                entry.finalUrl
+                  ? `<button class="btn-generate btn-sm" data-id="${esc(entry.id)}">${entry.qrCodeUrl ? "Regenerate" : "Generate"}</button>`
+                  : ""
+              }</td>`;
+            tbody.appendChild(tr);
+          }
+        } catch (err) {
+          console.warn("Failed to load Notion entries:", err);
+        }
+      }
+
+      document.getElementById("tbody").addEventListener("click", async (e) => {
+        const btn = e.target.closest(".btn-generate");
+        if (!btn) return;
+
+        const pageId = btn.dataset.id;
+        btn.disabled = true;
+        btn.textContent = "Generating\u2026";
+
+        try {
+          const res = await fetch("/api/generate-qr", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pageId }),
+          });
+          if (res.status === 401) {
+            window.location.href = "/";
+            return;
+          }
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          const td = btn.closest("tr").children[4];
+          td.innerHTML = `<a href="${esc(data.qrUrl)}" target="_blank" class="status-done">View QR</a>`;
+          btn.textContent = "Regenerate";
+        } catch {
+          btn.textContent = "Error";
+          setTimeout(() => {
+            btn.textContent = "Retry";
+            btn.disabled = false;
+          }, 2000);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      document
+        .getElementById("logout-btn")
+        .addEventListener("click", async () => {
+          await fetch("/api/auth", { method: "DELETE" });
+          window.location.href = "/";
+        });
+
+      function esc(str) {
+        if (!str) return "";
+        const d = document.createElement("div");
+        d.textContent = str;
+        return d.innerHTML;
+      }
+
+      loadEntries();
+    </script>
+  </body>
+</html>

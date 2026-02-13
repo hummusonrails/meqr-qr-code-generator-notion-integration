@@ -1,0 +1,15 @@
+{
+  "name": "meqr-generator",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "CLI tool to generate QR codes via the ME-QR API",
+  "main": "generate-qr.mjs",
+  "scripts": {
+    "generate": "node generate-qr.mjs"
+  },
+  "dependencies": {
+    "@notionhq/client": "^2.3.0",
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7"
+  }
+}

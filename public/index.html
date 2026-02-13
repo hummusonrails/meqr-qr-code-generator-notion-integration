@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Arbitrum QR Code Generator</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="login-shell">
+      <div class="login-container">
+        <div class="login-hero">
+          <div class="hero-logo">
+            <img src="/assets/logo-white.svg" alt="Arbitrum" />
+          </div>
+          <div class="hero-tagline">
+            Generate QR Codes<br />for UTM Links
+            <span>Arbitrum Foundation DevRel</span>
+          </div>
+        </div>
+
+        <div class="login-form-panel">
+          <h1>Sign in</h1>
+          <p class="subtitle">Enter the shared secret to continue.</p>
+
+          <form id="login-form">
+            <label for="secret">Secret</label>
+            <input
+              type="password"
+              id="secret"
+              name="secret"
+              placeholder="Enter your secret"
+              autocomplete="off"
+              required
+            />
+            <div class="error-msg" id="error"></div>
+            <button type="submit" class="btn-primary" id="submit-btn">
+              Sign in
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("login-form");
+      const errorEl = document.getElementById("error");
+      const btn = document.getElementById("submit-btn");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorEl.classList.remove("visible");
+        btn.disabled = true;
+        btn.textContent = "Signing in\u2026";
+
+        try {
+          const res = await fetch("/api/auth", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              secret: document.getElementById("secret").value,
+            }),
+          });
+
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || "Authentication failed");
+          }
+
+          window.location.href = "/dashboard.html";
+        } catch (err) {
+          errorEl.textContent = err.message;
+          errorEl.classList.add("visible");
+          btn.disabled = false;
+          btn.textContent = "Sign in";
+        }
+      });
+    </script>
+  </body>
+</html>
