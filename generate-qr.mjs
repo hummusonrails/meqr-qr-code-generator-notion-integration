@@ -51,7 +51,7 @@ function addCommonOptions(cmd) {
       "png"
     )
     .option("-o, --output <file>", "output file path")
-    .option("--size <px>", "QR image size in pixels", parseInt)
+    .option("--size <px>", "QR image size in pixels", (v) => parseInt(v, 10), 2000)
     .option("--pattern <style>", "dot pattern style")
     .option("--pattern-color <hex>", "dot color, e.g. #000000")
     .option("--bg-color <hex>", "background color, e.g. #ffffff")

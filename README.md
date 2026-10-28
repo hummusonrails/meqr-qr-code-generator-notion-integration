@@ -101,7 +101,7 @@ npm run generate --help
 |:---------------|:-------------------------------------|:--------|
 | `-f, --format` | Output format: `png`, `svg`, `jpg`   | `png`   |
 | `-o, --output` | Save to file instead of printing URL | —       |
-| `-s, --size`   | QR code size in pixels               | `300`   |
+| `--size`       | QR code size in pixels               | `2000`  |
 | `--pattern`    | Dot pattern style                    | —       |
 | `--fg-color`   | Foreground color (hex)               | —       |
 | `--bg-color`   | Background color (hex)               | —       |
